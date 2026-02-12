@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta Autor="Jorge Alirio Mendoza Rincón">
+    <title>CalTopo Web</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="calculadora">
+
+    <div class="encabezado">
+    <img src="CTop.ico" alt="CTop Logo">
+    <div class="titulo">
+        <h1>CTopo Web</h1>
+        <p>Calculadora Topográfica Profesional</p>
+        <span>Azimut · Rumbo · Distancias · Coordenadas</span>
+    </div>
+</div>
+
+
+    <input id="display" type="text" placeholder="Ingrese datos…">
+
+    <div class="botones">
+
+        <!-- FILA 1 -->
+        <button>7</button><button>8</button><button>9</button><button>/</button><button>C</button><button>DEC→DMS</button>
+
+        <!-- FILA 2 -->
+        <button>4</button><button>5</button><button>6</button><button>*</button><button>←</button><button>DMS→DEC</button>
+
+        <!-- FILA 3 -->
+        <button>1</button><button>2</button><button>3</button><button>-</button><button>+</button><button>x²</button>
+
+        <!-- FILA 4 -->
+        <button>0</button><button>,</button><button>!</button><button>=</button><button>log</button><button>x³</button>
+
+        <!-- FILA 5 -->
+        <button>NSθWE</button><button>Az</button><button>CAz</button><button>Ð</button><button>xʸ</button><button>√</button>
+
+        <!-- FILA 6 -->
+        <button>cos</button><button>sen</button><button>tan</button><button>Δz</button><button>°</button><button>'</button>
+
+        <!-- FILA 7 -->
+        <button>''</button><button>(</button><button>)</button><button>.</button><button>π</button><button>REP</button>
+        
+        
+        <button class="pdf">PDF</button>
+
+    </div>
+
+    <textarea id="resultados" readonly>Resultados</textarea>
+    
+
+
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<script src="logica.js"></script>
+
+<footer class="footer">
+  <p><strong>CalTopo Web</strong> – Calculadora Topográfica Profesional</p>
+  <p>© 2026 Autor:Jorge Alirio Mendoza Rincón · Todos los derechos reservados</p>
+  <p>
+    📧 contacto: aliriomri@gmail.com <br>
+    📱 www.facebook.com/MatematicasyTopografia
+  </p>
+</footer>
+
+
+</body>
+</html>
