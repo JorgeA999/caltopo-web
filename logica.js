@@ -171,6 +171,114 @@ if (["sen", "cos", "tan"].includes(v)) {
     return;
 }
 
+/* ===== MÓDULO ANGULAR TOPOGRÁFICO PROFESIONAL ===== */
+if (["Asen","Acos","Atan"].includes(v)) {
+
+    const aDMS = (deg) => {
+        if (deg < 0) deg += 360;
+        const g = Math.floor(deg);
+        const m = Math.floor((deg - g) * 60);
+        const s = (((deg - g) * 60 - m) * 60).toFixed(2);
+        return `${g}° ${m}' ${s}"`;
+    };
+
+    const rumboDesdeAz = (az) => {
+        let base, cuad;
+
+        if (az >= 0 && az < 90) {
+            base = az;
+            cuad = "N E";
+        }
+        else if (az >= 90 && az < 180) {
+            base = 180 - az;
+            cuad = "S E";
+        }
+        else if (az >= 180 && az < 270) {
+            base = az - 180;
+            cuad = "S O";
+        }
+        else {
+            base = 360 - az;
+            cuad = "N O";
+        }
+
+        return `${cuad} ${aDMS(base)}`;
+    };
+
+    // ===============================
+    // ATAN TOPOGRÁFICO (ΔE,ΔN)
+    // ===============================
+    if (v === "Atan") {
+
+        const partes = display.value.split(",");
+
+        if (partes.length !== 2) {
+            alert("Formato Atan: ΔE,ΔN");
+            return;
+        }
+
+        let [dE, dN] = partes.map(Number);
+
+        if (isNaN(dE) || isNaN(dN)) {
+            display.value = "Error";
+            return;
+        }
+
+        let azRad = Math.atan2(dE, dN);
+        let azDeg = azRad * 180 / Math.PI;
+        if (azDeg < 0) azDeg += 360;
+
+        let rumbo = rumboDesdeAz(azDeg);
+
+        resultados.value = `
+    CÁLCULO ANGULAR TOPOGRÁFICO
+    --------------------------------
+    ΔE: ${dE.toFixed(4)}
+    ΔN: ${dN.toFixed(4)}
+
+    AZIMUT:       ${aDMS(azDeg)}
+    AZIMUT DEC:   ${azDeg.toFixed(6)}°
+    RUMBO:        ${rumbo}
+    `;
+
+        // Guardar para PDF
+        window.datosTopo = {
+            az: azDeg,
+            rumbo: rumbo
+        };
+
+        return;
+    }
+
+    // ===============================
+    // ASEN / ACOS (PRO)
+    // ===============================
+    let valor = parseFloat(display.value);
+
+    if (isNaN(valor) || valor < -1 || valor > 1) {
+        display.value = "Error";
+        return;
+    }
+
+    let resultado = (v === "Asen")
+        ? Math.asin(valor)
+        : Math.acos(valor);
+
+    let deg = resultado * 180 / Math.PI;
+
+    resultados.value = `
+    CÁLCULO ANGULAR INVERSO
+    --------------------------------
+    Resultado (DMS): ${aDMS(deg)}
+    Resultado (DEC): ${deg.toFixed(6)}°
+    `;
+
+    display.value = aDMS(deg);
+    reset = true;
+    return;
+}
+
+
 
     if (v === "log") display.value = Math.log(+display.value).toFixed(6);
 
@@ -188,12 +296,15 @@ if (["sen", "cos", "tan"].includes(v)) {
     if (v === "Ð") distancia();
     if (v === "Δz") deltaZ();
     if (v === "NSθWE") rumbo();
+    if (v === "OBS") calcularObservadoPro();
+    if (v === "POL-PRO") planoAPolarPro();
 
     /* ===============================
        REPORTES
        =============================== */
     if (v === "REP") reporteTopografico();
     if (v === "PDF") exportarPDF();
+    
 }
 
 
@@ -385,6 +496,223 @@ COTA Z:            ${Z1} → ${Z2}
 
   
 }
+
+function planoAPolarPro() {
+
+  const partes = display.value.trim().split(",");
+
+  if (partes.length !== 4) {
+    alert("Formato:\nPlano→Polar: E0,N0,E,N\nPolar→Plano: E0,N0,r,Az");
+    return;
+  }
+
+  let [E0, N0, v3, v4] = partes;
+
+  E0 = Number(E0);
+  N0 = Number(N0);
+
+  if (isNaN(E0) || isNaN(N0)) {
+    alert("Origen inválido");
+    return;
+  }
+
+  // ===== FUNCIÓN DMS A DECIMAL =====
+  const dmsToDec = (txt) => {
+    let match = txt.match(/(\d+)[°\s]+(\d+)['\s]+([\d.]+)/);
+    if (!match) return Number(txt); // si no es DMS, asume decimal
+
+    let g = parseFloat(match[1]);
+    let m = parseFloat(match[2]);
+    let s = parseFloat(match[3]);
+
+    return g + m/60 + s/3600;
+  };
+
+  const aDMS = (deg) => {
+    const g = Math.floor(deg);
+    const m = Math.floor((deg - g)*60);
+    const s = (((deg - g)*60 - m)*60).toFixed(2);
+    return `${g}° ${m}' ${s}"`;
+  };
+
+  // =====================================
+  // DETECCIÓN AUTOMÁTICA
+  // =====================================
+
+  // Si ambos son numéricos simples → puede ser plano→polar
+  if (!isNaN(Number(v3)) && !isNaN(Number(v4))) {
+
+    let E = Number(v3);
+    let N = Number(v4);
+
+    // Diferencias
+    let dE = E - E0;
+    let dN = N - N0;
+
+    let r = Math.sqrt(dE**2 + dN**2);
+
+    let azRad = Math.atan2(dE, dN);
+    let azDeg = azRad * 180 / Math.PI;
+    if (azDeg < 0) azDeg += 360;
+
+    let rumboBase = Math.abs(Math.atan(dE/dN) * 180 / Math.PI);
+    let cuad = "";
+
+    if (dE >= 0 && dN >= 0) cuad = "N E";
+    else if (dE >= 0 && dN < 0) cuad = "S E";
+    else if (dE < 0 && dN < 0) cuad = "S O";
+    else cuad = "N O";
+
+    resultados.value = `
+    PLANO → POLAR
+    --------------------------
+    ΔE: ${dE.toFixed(4)}
+    ΔN: ${dN.toFixed(4)}
+
+    r: ${r.toFixed(4)} m
+    Azimut: ${aDMS(azDeg)}
+    Rumbo: ${cuad} ${aDMS(rumboBase)}
+    `;
+
+    return;
+  }
+
+  // =====================================
+  // POLAR → PLANO
+  // =====================================
+
+  let r = Number(v3);
+  let azDeg = dmsToDec(v4);
+
+  if (isNaN(r) || isNaN(azDeg)) {
+    alert("Datos inválidos");
+    return;
+  }
+
+  let rad = azDeg * Math.PI / 180;
+
+  let dE = r * Math.sin(rad);
+  let dN = r * Math.cos(rad);
+
+  let E = E0 + dE;
+  let N = N0 + dN;
+
+  resultados.value = `
+    POLAR → PLANO
+    --------------------------
+    ΔE: ${dE.toFixed(4)}
+    ΔN: ${dN.toFixed(4)}
+
+    E: ${E.toFixed(4)}
+    N: ${N.toFixed(4)}
+    Azimut: ${aDMS(azDeg)}
+    `;
+
+}
+
+  // Guardar para PDF si desea
+  window.datosTopo = {
+    r,
+    az: azDeg,
+    rumbo: rumboDMS
+  };
+
+
+function calcularObservadoPro() {
+
+  const entrada = display.value.trim();
+  const partes = entrada.split(",");
+
+  if (partes.length !== 6) {
+    alert("Formato: E0,N0,Z0,Az(DMS),Dist,AngV");
+    return;
+  }
+
+  let [E0, N0, Z0, azTxt, D, angV] = partes;
+
+  E0 = Number(E0);
+  N0 = Number(N0);
+  Z0 = Number(Z0);
+  D = Number(D);
+  angV = Number(angV);
+
+  if ([E0,N0,Z0,D,angV].some(isNaN)) {
+    alert("Datos numéricos inválidos");
+    return;
+  }
+
+  // ===== CONVERTIR DMS A DECIMAL =====
+  let match = azTxt.match(/(\d+)[°\s]+(\d+)['\s]+([\d.]+)/);
+
+  if (!match) {
+    alert("Azimut formato inválido");
+    return;
+  }
+
+  let g = parseFloat(match[1]);
+  let m = parseFloat(match[2]);
+  let s = parseFloat(match[3]);
+
+  let azDecimal = g + m/60 + s/3600;
+
+  // ===== RADIANES =====
+  let azRad = azDecimal * Math.PI / 180;
+  let angVRad = angV * Math.PI / 180;
+
+  // ===== DISTANCIAS =====
+  let dH = D * Math.cos(angVRad);
+  let dZ = D * Math.sin(angVRad);
+
+  let dE = dH * Math.sin(azRad);
+  let dN = dH * Math.cos(azRad);
+
+  let E = E0 + dE;
+  let N = N0 + dN;
+  let Z = Z0 + dZ;
+
+  // ===== RUMBO =====
+  let rumboDeg = Math.abs(Math.atan(dE/dN) * 180 / Math.PI);
+  let cuadrante = "";
+
+  if (dE >= 0 && dN >= 0) cuadrante = "N E";
+  else if (dE >= 0 && dN < 0) cuadrante = "S E";
+  else if (dE < 0 && dN < 0) cuadrante = "S O";
+  else cuadrante = "N O";
+
+  const aDMS = (deg) => {
+    const g = Math.floor(deg);
+    const m = Math.floor((deg - g)*60);
+    const s = (((deg - g)*60 - m)*60).toFixed(2);
+    return `${g}° ${m}' ${s}"`;
+  };
+
+  // ===== GUARDAR PARA PDF =====
+  window.datosTopo = {
+    E0, N0, Z0,
+    E, N, Z,
+    az: azDecimal,
+    rumbo: cuadrante + " " + aDMS(rumboDeg),
+    dH,
+    dZ
+  };
+
+  const reporte = `
+PUNTO OBSERVADO (3D)
+--------------------------------
+E: ${E.toFixed(3)}
+N: ${N.toFixed(3)}
+Z: ${Z.toFixed(3)}
+
+AZIMUT: ${aDMS(azDecimal)}
+RUMBO:  ${cuadrante} ${aDMS(rumboDeg)}
+
+DISTANCIA H: ${dH.toFixed(3)} m
+DISTANCIA V: ${dZ.toFixed(3)} m
+`;
+
+  resultados.value = reporte;
+}
+
 
 function contraAzimut(){}
 function distancia(){}
